@@ -1,3 +1,5 @@
+use core::fmt;
+
 const AN : &str = "an";
 const SHOT : &str = "shot";
 const PAJAMAS : &str = "pajamas";
@@ -25,6 +27,30 @@ enum Rule {
     Unit {prod: NonTerm, terminal: &'static str},
 }
 
+#[derive(PartialEq, Clone)]
+enum Tree<'a> {
+    Empty,
+    Node {root: &'a NonTerm, ltree: Box<Tree<'a>>, rtree: Box<Tree<'a>>}
+}
+
+impl fmt::Display for Tree<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => write!(f, "Empty"),
+            Self::Node { root, .. } => write!(f, "{:?}", root),
+        }
+    }
+}
+
+impl fmt::Debug for Tree<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Empty => write!(f, "Empty"),
+            Self::Node { root, .. } => write!(f, "{:?}", root),
+        }
+    }
+}
+
 fn main() {
     let rules = vec![
         Rule::Binary { prod: NonTerm::S, one: NonTerm::NP, two: NonTerm::VP },
@@ -49,7 +75,7 @@ fn main() {
 
 	let sent = [I, SHOT, AN, ELEPHANT, IN, MY, PAJAMAS];
 
-    let mut chart : [[Vec<&NonTerm>; 7]; 7] = Default::default();
+    let mut chart : [[Vec<Tree>; 7]; 7] = Default::default();
 
 	let n = 7;
 
@@ -59,8 +85,13 @@ fn main() {
 		for rule in &unit_rules {
 			if let Rule::Unit { prod, terminal } = rule {
 				if &word == terminal {
+                    let tree = Tree::Node {
+                                root: prod,
+                                ltree: Box::new(Tree::Empty),
+                                rtree: Box::new(Tree::Empty)};
 					// hello("Found word for prod {:?}: {}", prod, word);
-					chart[i][i].push(prod);
+					chart[i][i].push(tree);
+                        
 				}
 			}
 		}
@@ -86,23 +117,34 @@ fn main() {
 					if let Rule::Binary { prod, one, two } = rule {
 
                         let mut valid_prods : Vec<&NonTerm>= vec![];
+                        let mut valid_trees : Vec<Tree> = vec![];
 
 						// TODO: Fix this indent mess
 						for sub_term1 in &chart[i][j-p] {
+
+                            if let Tree::Node { root, .. } = *sub_term1 {
+                                if root == one {
+                                    for sub_term2 in &chart[i+(l-p)][j] {
+                                        if let Tree::Node { root, .. } = *sub_term2 {
+                                            if root == two {
+                                                valid_prods.push(prod);
+                                                valid_trees.push(Tree::Node {
+                                                    root: prod,
+                                                    ltree: Box::new(sub_term1.clone()),
+                                                    rtree: Box::new(sub_term2.clone()) })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
 							// We have to insert a production for every instance of the NT
-							if *sub_term1 == one {
-								for sub_term2 in &chart[i+(l-p)][j] {
-									if *sub_term2 == two {
-                                        valid_prods.push(prod);
-									}
-								}
-							}
+							
 						}
 
-                        for v_prod in valid_prods {
+                        for v_tree in valid_trees {
                             print!("Adding production {:?} at ({:?}, {:?}); ", prod, i, j);
 
-                            chart[i][j].push(v_prod);
+                            chart[i][j].push(v_tree);
                         }
 						
 						/* if contains(one, &chart[i][j-p]) && contains(two, &chart[i+(l-p)][j]) {
@@ -119,9 +161,9 @@ fn main() {
 		// print!();
 	}
 
-	if contains(&NonTerm::S, &chart[0][n-1]) {
+	/* if contains(&NonTerm::S, &chart[0][n-1]) {
 		println!("Sentence belongs in the grammar");
-	}
+	} */
 }
 
 fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonTerm> {
@@ -134,6 +176,14 @@ fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonT
     }
 
     matches
+}
+
+fn get_root<'a>(tree: &'a Tree) -> Option<&'a NonTerm> {
+    if let Tree::Node { root, .. } = tree {
+        return Some(*root);
+    }
+
+    None
 }
 
 fn contains(nterm: &NonTerm, nterms: &Vec<&NonTerm>) -> bool {
