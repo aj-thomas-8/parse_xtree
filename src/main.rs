@@ -79,54 +79,54 @@ fn main() {
         Rule::Unit { prod: NonTerm::Prps, terminal: MY }
     ];
 
-	let sent = [I, SHOT, AN, ELEPHANT, IN, MY, PAJAMAS];
+    let sent = [I, SHOT, AN, ELEPHANT, IN, MY, PAJAMAS];
 
     let mut chart : [[Vec<Tree>; 7]; 7] = Default::default();
 
-	let n = 7;
+    let n = 7;
 
-	for i in 0..n {
-		let word = sent[i];
+    for i in 0..n {
+        let word = sent[i];
 
-		for rule in &unit_rules {
-			if let Rule::Unit { prod, terminal } = rule {
-				if &word == terminal {
+        for rule in &unit_rules {
+            if let Rule::Unit { prod, terminal } = rule {
+                if &word == terminal {
                     let tree = Tree::Node {
                                 root: prod,
                                 ltree: Box::new(Tree::Empty),
                                 rtree: Box::new(Tree::Empty)};
-					// hello("Found word for prod {:?}: {}", prod, word);
-					chart[i][i].push(tree);
+                    // hello("Found word for prod {:?}: {}", prod, word);
+                    chart[i][i].push(tree);
                         
-				}
-			}
-		}
-	}
+                }
+            }
+        }
+    }
 
-	for l in 2..=n {
-		for i in 0..=(n - l) {
-			let j = i + l - 1;
-			// print!("({:?}, {:?}) ", i, j);
+    for l in 2..=n {
+        for i in 0..=(n - l) {
+            let j = i + l - 1;
+            // print!("({:?}, {:?}) ", i, j);
 
-			for p in 1..=(l-1) {
-				// chart[i][j-p] - left; chart[i+(l-p)][j] - down
-				// print!("{:?} + {:?} ", chart[i][j-p], chart[i+p][j]);
+            for p in 1..=(l-1) {
+                // chart[i][j-p] - left; chart[i+(l-p)][j] - down
+                // print!("{:?} + {:?} ", chart[i][j-p], chart[i+p][j]);
 
 
-				if chart[i][j-p].is_empty() || chart[i+(l-p)][j].is_empty() {
-					continue;
-				}
-				print!("(span {:?}) Non-empty prods: {:?} + {:?}: ", l, 
-					&chart[i][j-p], &chart[i+(l-p)][j]);
+                if chart[i][j-p].is_empty() || chart[i+(l-p)][j].is_empty() {
+                    continue;
+                }
+                print!("(span {:?}) Non-empty prods: {:?} + {:?}: ", l, 
+                    &chart[i][j-p], &chart[i+(l-p)][j]);
 
-				for rule in &rules {
-					if let Rule::Binary { prod, one, two } = rule {
+                for rule in &rules {
+                    if let Rule::Binary { prod, one, two } = rule {
 
                         let mut valid_trees : Vec<Tree> = vec![];
 
-						// TODO: Fix this indent mess
-						for sub_term1 in &chart[i][j-p] {
-							// We have to insert a production for every instance of the NT
+                        // TODO: Fix this indent mess
+                        for sub_term1 in &chart[i][j-p] {
+                        // We have to insert a production for every instance of the NT
                             if let Tree::Node { root, .. } = *sub_term1 {
                                 if root == one {
                                     for sub_term2 in &chart[i+(l-p)][j] {
@@ -142,8 +142,8 @@ fn main() {
                                     }
                                 }
                             }
-							
-						}
+                            
+                        }
 
                         for v_tree in valid_trees {
                             print!("Adding production {:?} at ({:?}, {:?}); ",
@@ -151,14 +151,14 @@ fn main() {
 
                             chart[i][j].push(v_tree);
                         }
-					}
-				}
-			
-				println!();
-			}
-		}
-		println!();
-	}
+                    }
+                }
+            
+                println!();
+            }
+        }
+        println!();
+    }
 
     if !chart[0][n-1].is_empty() {
         let parse_tree = &chart[0][n-1][0];
@@ -166,9 +166,9 @@ fn main() {
         // build_display_tree(parse_tree);
     }
 
-	/* if contains(&NonTerm::S, &chart[0][n-1]) {
-		println!("Sentence belongs in the grammar");
-	} */
+    /* if contains(&NonTerm::S, &chart[0][n-1]) {
+        println!("Sentence belongs in the grammar");
+    } */
 }
 
 fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonTerm> {
@@ -219,11 +219,11 @@ fn _get_root<'a>(tree: &'a Tree) -> Option<&'a NonTerm> {
 }
 
 fn _contains(nterm: &NonTerm, nterms: &Vec<&NonTerm>) -> bool {
-	for term in nterms {
-		if *term == nterm {
-			return true;
-		}
-	}
+    for term in nterms {
+        if *term == nterm {
+            return true;
+        }
+    }
 
-	false
+    false
 }
