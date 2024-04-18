@@ -1,5 +1,10 @@
 use core::fmt;
 
+use id_tree::Node;
+use id_tree::NodeId;
+use id_tree::InsertBehavior;
+use id_tree_layout::Layouter;
+
 const AN : &str = "an";
 const SHOT : &str = "shot";
 const PAJAMAS : &str = "pajamas";
@@ -7,6 +12,16 @@ const ELEPHANT : &str = "elephant";
 const I : &str = "I";
 const IN : &str = "in";
 const MY : &str = "my";
+
+struct DisplayNode {
+    display_str: String,
+}
+
+impl id_tree_layout::Visualize for DisplayNode {
+    fn visualize(&self) -> String {
+        self.display_str.clone()
+    }
+}
 
 #[derive(Debug, PartialEq)]
 enum NonTerm {
@@ -163,7 +178,11 @@ fn main() {
     if !chart[0][n-1].is_empty() {
         let parse_tree = &chart[0][n-1][0];
 
-        // build_display_tree(parse_tree);
+        if let Some(display_tree) = build_display_tree(parse_tree) {
+            let layouter = Layouter::new(&display_tree)
+                .with_file_path(std::path::Path::new("./parse_tree.svg"));
+            layouter.write().expect("Failed creating parse tree image");
+        }
     }
 
     /* if contains(&NonTerm::S, &chart[0][n-1]) {
@@ -192,21 +211,35 @@ fn node_count(tree: &Tree) -> usize {
     }
 }
 
-fn build_display_tree(tree: &Tree) {
-    let n = node_count(tree);
-    let mut d_tree : id_tree::Tree<String> = id_tree::TreeBuilder::new()
-        .with_node_capacity(n).build();
+fn build_display_tree(tree: &Tree) -> Option<id_tree::Tree<DisplayNode>> {
+    if let Tree::Node { root, ltree, rtree } = tree {
+        let n = node_count(tree);
+        let mut d_tree : id_tree::Tree<DisplayNode> = id_tree::TreeBuilder::new()
+            .with_node_capacity(n).build();
 
-    _gen_display(tree, &mut d_tree)
+        let root_id = d_tree.insert(Node::new(
+                DisplayNode { display_str: root.to_string() }),
+            id_tree::InsertBehavior::AsRoot).unwrap();
+
+        // Question to ask? gen_display(&mut d_tree, &(*ltree), root_id);
+        gen_display(&mut d_tree, ltree, &root_id);
+        gen_display(&mut d_tree, rtree, &root_id);
+
+        Some(d_tree)
+    } else {
+        None
+    }
 }
 
-fn _gen_display(tree: &Tree, d_tree: &mut id_tree::Tree<String>) {
-    match tree {
-        Tree::Node { root, ltree, rtree } => {
-            let root_id = d_tree.insert(id_tree::Node::new(root.to_string()),
-                id_tree::InsertBehavior::AsRoot);
-        },
-        Tree::Empty => (),
+fn gen_display(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
+    parent_id: &NodeId) {
+    if let Tree::Node { root, ltree, rtree } = tree {
+        let root_id = d_tree.insert(Node::new(
+                DisplayNode { display_str: root.to_string() }),
+            InsertBehavior::UnderNode(parent_id)).unwrap();
+
+        gen_display(d_tree, ltree, &root_id);
+        gen_display(d_tree, rtree, &root_id);
     }
 }
 
@@ -214,7 +247,6 @@ fn _get_root<'a>(tree: &'a Tree) -> Option<&'a NonTerm> {
     if let Tree::Node { root, .. } = tree {
         return Some(*root);
     }
-
     None
 }
 
@@ -224,6 +256,5 @@ fn _contains(nterm: &NonTerm, nterms: &Vec<&NonTerm>) -> bool {
             return true;
         }
     }
-
     false
 }
