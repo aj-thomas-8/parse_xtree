@@ -21,6 +21,12 @@ enum NonTerm {
     Prps,
 }
 
+impl fmt::Display for NonTerm {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
 #[derive(Debug)]
 enum Rule {
     Binary {prod: NonTerm, one: NonTerm, two: NonTerm},
@@ -116,41 +122,35 @@ fn main() {
 				for rule in &rules {
 					if let Rule::Binary { prod, one, two } = rule {
 
-                        let mut valid_prods : Vec<&NonTerm>= vec![];
                         let mut valid_trees : Vec<Tree> = vec![];
 
 						// TODO: Fix this indent mess
 						for sub_term1 in &chart[i][j-p] {
-
+							// We have to insert a production for every instance of the NT
                             if let Tree::Node { root, .. } = *sub_term1 {
                                 if root == one {
                                     for sub_term2 in &chart[i+(l-p)][j] {
                                         if let Tree::Node { root, .. } = *sub_term2 {
                                             if root == two {
-                                                valid_prods.push(prod);
                                                 valid_trees.push(Tree::Node {
                                                     root: prod,
                                                     ltree: Box::new(sub_term1.clone()),
-                                                    rtree: Box::new(sub_term2.clone()) })
+                                                    rtree: Box::new(sub_term2.clone()) 
+                                                })
                                             }
                                         }
                                     }
                                 }
                             }
-							// We have to insert a production for every instance of the NT
 							
 						}
 
                         for v_tree in valid_trees {
-                            print!("Adding production {:?} at ({:?}, {:?}); ", prod, i, j);
+                            print!("Adding production {:?} at ({:?}, {:?}); ",
+                                   prod, i, j);
 
                             chart[i][j].push(v_tree);
                         }
-						
-						/* if contains(one, &chart[i][j-p]) && contains(two, &chart[i+(l-p)][j]) {
-							print!("Adding production {:?} at ({:?}, {:?})", prod, i, j);
-							chart[i][j].push(prod);
-						} */
 					}
 				}
 			
@@ -158,8 +158,13 @@ fn main() {
 			}
 		}
 		println!();
-		// print!();
 	}
+
+    if !chart[0][n-1].is_empty() {
+        let parse_tree = &chart[0][n-1][0];
+
+        // build_display_tree(parse_tree);
+    }
 
 	/* if contains(&NonTerm::S, &chart[0][n-1]) {
 		println!("Sentence belongs in the grammar");
@@ -178,7 +183,34 @@ fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonT
     matches
 }
 
-fn get_root<'a>(tree: &'a Tree) -> Option<&'a NonTerm> {
+fn node_count(tree: &Tree) -> usize {
+    match tree {
+        Tree::Node { root, ltree, rtree } =>
+            1 + node_count(ltree) + node_count(rtree),
+
+        Tree::Empty => 0,
+    }
+}
+
+fn build_display_tree(tree: &Tree) {
+    let n = node_count(tree);
+    let mut d_tree : id_tree::Tree<String> = id_tree::TreeBuilder::new()
+        .with_node_capacity(n).build();
+
+    _gen_display(tree, &mut d_tree)
+}
+
+fn _gen_display(tree: &Tree, d_tree: &mut id_tree::Tree<String>) {
+    match tree {
+        Tree::Node { root, ltree, rtree } => {
+            let root_id = d_tree.insert(id_tree::Node::new(root.to_string()),
+                id_tree::InsertBehavior::AsRoot);
+        },
+        Tree::Empty => (),
+    }
+}
+
+fn _get_root<'a>(tree: &'a Tree) -> Option<&'a NonTerm> {
     if let Tree::Node { root, .. } = tree {
         return Some(*root);
     }
@@ -186,7 +218,7 @@ fn get_root<'a>(tree: &'a Tree) -> Option<&'a NonTerm> {
     None
 }
 
-fn contains(nterm: &NonTerm, nterms: &Vec<&NonTerm>) -> bool {
+fn _contains(nterm: &NonTerm, nterms: &Vec<&NonTerm>) -> bool {
 	for term in nterms {
 		if *term == nterm {
 			return true;
@@ -195,5 +227,3 @@ fn contains(nterm: &NonTerm, nterms: &Vec<&NonTerm>) -> bool {
 
 	false
 }
-
-
