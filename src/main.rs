@@ -15,7 +15,7 @@ const _MY: &str = "my";
 
 const BILL: &str = "Bill";
 const PAST: &str = "[PAST]";
-const SUDDENLY: &str = "suddently";
+const SUDDENLY: &str = "suddenly";
 const HIT: &str = "hit";
 const A: &str = "a";
 const CAR: &str = "car";
@@ -30,7 +30,7 @@ impl id_tree_layout::Visualize for DisplayNode {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 enum NonTerm {
     TP,
     Tbar,
@@ -51,7 +51,14 @@ enum NonTerm {
 
 impl fmt::Display for NonTerm {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            Self::Tbar => write!(f, "T'"),
+            Self::Nbar => write!(f, "N'"),
+            Self::Vbar => write!(f, "V'"),
+            Self::Advbar => write!(f, "Adv'"),
+            Self::Dbar => write!(f, "D'"),
+            _ => write!(f, "{:?}", self),
+        }
     }
 }
 
@@ -64,6 +71,7 @@ enum Rule {
 #[derive(PartialEq, Clone)]
 enum Tree<'a> {
     Empty,
+    Leaf(&'a str),
     Node {root: &'a NonTerm, ltree: Box<Tree<'a>>, rtree: Box<Tree<'a>>}
 }
 
@@ -71,6 +79,7 @@ impl fmt::Display for Tree<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Empty => write!(f, "Empty"),
+            Self::Leaf(s) => write!(f, "{}", s),
             Self::Node { root, .. } => write!(f, "{:?}", root),
         }
     }
@@ -80,6 +89,7 @@ impl fmt::Debug for Tree<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Empty => write!(f, "Empty"),
+            Self::Leaf(s) => write!(f, "{}", s),
             Self::Node { root, .. } => write!(f, "{:?}", root),
         }
     }
@@ -112,10 +122,10 @@ fn main() {
     ];
 
     let sent = [BILL, PAST, SUDDENLY, HIT, A, CAR];
+    let n = sent.len();
 
     let mut chart : [[Vec<Tree>; 6]; 6] = Default::default();
 
-    let n = 6;
 
     for i in 0..n {
         let word = sent[i];
@@ -125,7 +135,7 @@ fn main() {
                 if &word == terminal {
                     let tree = Tree::Node {
                                 root: prod,
-                                ltree: Box::new(Tree::Empty),
+                                ltree: Box::new(Tree::Leaf(*terminal)),
                                 rtree: Box::new(Tree::Empty)};
                     // hello("Found word for prod {:?}: {}", prod, word);
                     chart[i][i].push(tree);
@@ -194,7 +204,7 @@ fn main() {
     
     let mut i = 0;
     for parse_tree in &chart[0][n-1] {
-        if let Tree::Node { root, ltree, rtree } = parse_tree {
+        if let Tree::Node { root, ltree: _, rtree: _ } = parse_tree {
             if !(**root == NonTerm::TP) {
                 return
             }
@@ -209,10 +219,6 @@ fn main() {
             }    
         }
     }
-
-    /* if contains(&NonTerm::TP, &chart[0][n-1]) {
-        println!("Sentence belongs in the grammar");
-    } */
 }
 
 fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonTerm> {
@@ -229,9 +235,9 @@ fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonT
 
 fn node_count(tree: &Tree) -> usize {
     match tree {
-        Tree::Node { root, ltree, rtree } =>
+        Tree::Node { root: _, ltree, rtree } =>
             1 + node_count(ltree) + node_count(rtree),
-
+        Tree::Leaf(_) => 1,
         Tree::Empty => 0,
     }
 }
@@ -258,13 +264,70 @@ fn build_display_tree(tree: &Tree) -> Option<id_tree::Tree<DisplayNode>> {
 
 fn gen_display(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
     parent_id: &NodeId) {
-    if let Tree::Node { root, ltree, rtree } = tree {
-        let root_id = d_tree.insert(Node::new(
+    match tree {
+        Tree::Node { root, ltree, rtree } => {
+            let root_id = d_tree.insert(Node::new(
                 DisplayNode { display_str: root.to_string() }),
-            InsertBehavior::UnderNode(parent_id)).unwrap();
+                InsertBehavior::UnderNode(parent_id)).unwrap();
 
-        gen_display(d_tree, ltree, &root_id);
-        gen_display(d_tree, rtree, &root_id);
+            let root_id = extend(d_tree, tree, root_id);
+
+            gen_display(d_tree, ltree, &root_id);
+            gen_display(d_tree, rtree, &root_id);
+        },
+        Tree::Leaf(s) => {
+            let _ = d_tree.insert(Node::new(
+                    DisplayNode { display_str: s.to_string() }),
+                    InsertBehavior::UnderNode(parent_id));
+        },
+        _ => (),
+    }
+}
+
+fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
+    parent_id: NodeId) -> NodeId {
+    if let Tree::Node { root, ltree, rtree } = tree {
+        match (*root, (**ltree).clone(), (**rtree).clone()) {
+            (NonTerm::NP, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Nbar.to_string() }),
+                    // Question #2: why is this memory-safe? 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::N.to_string() }),
+                    InsertBehavior::UnderNode(&new_id)).unwrap();
+
+                new_id
+            },
+
+            (NonTerm::VP, 
+             Tree::Node { root: NonTerm::AdvP, ltree: _, rtree: _ },
+             Tree::Node { root: NonTerm::Vbar, ltree: _, rtree: _ }) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Vbar.to_string() }),
+                    // Question #2: why is this memory-safe? 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                new_id
+            },
+
+            (NonTerm::AdvP, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Advbar.to_string() }),
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Adv.to_string() }),
+                    InsertBehavior::UnderNode(&new_id)).unwrap();
+
+                new_id
+            }
+            
+            (_, _, _) => parent_id,
+        }
+    } else {
+        parent_id
     }
 }
 
