@@ -174,14 +174,22 @@ fn main() {
         }
         println!();
     }
+    
+    let mut i = 0;
+    for parse_tree in &chart[0][n-1] {
+        if let Tree::Node { root, ltree, rtree } = parse_tree {
+            if !(**root == NonTerm::S) {
+                return
+            }
 
-    if !chart[0][n-1].is_empty() {
-        let parse_tree = &chart[0][n-1][0];
+            if let Some(display_tree) = build_display_tree(parse_tree) {
+                let path = format!("./parse_tree-{:?}.svg", i);
+                let layouter = Layouter::new(&display_tree)
+                    .with_file_path(std::path::Path::new(path.as_str()));
+                layouter.write().expect("Failed creating parse tree image");
 
-        if let Some(display_tree) = build_display_tree(parse_tree) {
-            let layouter = Layouter::new(&display_tree)
-                .with_file_path(std::path::Path::new("./parse_tree.svg"));
-            layouter.write().expect("Failed creating parse tree image");
+                i += 1;
+            }    
         }
     }
 
