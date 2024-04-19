@@ -5,13 +5,20 @@ use id_tree::NodeId;
 use id_tree::InsertBehavior;
 use id_tree_layout::Layouter;
 
-const AN : &str = "an";
-const SHOT : &str = "shot";
-const PAJAMAS : &str = "pajamas";
-const ELEPHANT : &str = "elephant";
-const I : &str = "I";
-const IN : &str = "in";
-const MY : &str = "my";
+const _AN: &str = "an";
+const _SHOT: &str = "shot";
+const _PAJAMAS: &str = "pajamas";
+const _ELEPHANT: &str = "elephant";
+const _I: &str = "I";
+const _IN: &str = "in";
+const _MY: &str = "my";
+
+const BILL: &str = "Bill";
+const PAST: &str = "[PAST]";
+const SUDDENLY: &str = "suddently";
+const HIT: &str = "hit";
+const A: &str = "a";
+const CAR: &str = "car";
 
 struct DisplayNode {
     display_str: String,
@@ -25,15 +32,21 @@ impl id_tree_layout::Visualize for DisplayNode {
 
 #[derive(Debug, PartialEq)]
 enum NonTerm {
-    S,
+    TP,
+    Tbar,
+    T,
     NP,
+    Nbar,
+    N,
     VP,
-    PP,
-    In,
-    Det,
-    Vbd,
-    Prp,
-    Prps,
+    Vbar,
+    V,
+    AdvP,
+    Advbar,
+    Adv,
+    DP,
+    Dbar,
+    D,
 }
 
 impl fmt::Display for NonTerm {
@@ -74,31 +87,35 @@ impl fmt::Debug for Tree<'_> {
 
 fn main() {
     let rules = vec![
-        Rule::Binary { prod: NonTerm::S, one: NonTerm::NP, two: NonTerm::VP },
-        Rule::Binary { prod: NonTerm::PP, one: NonTerm::In, two: NonTerm::NP },
-        Rule::Binary { prod: NonTerm::NP, one: NonTerm::Det, two: NonTerm::NP },
-        Rule::Binary { prod: NonTerm::NP, one: NonTerm::NP, two: NonTerm::PP },
-        Rule::Binary { prod: NonTerm::VP, one: NonTerm::Vbd, two: NonTerm::NP },
-        Rule::Binary { prod: NonTerm::VP, one: NonTerm::VP, two: NonTerm::PP },
-        Rule::Binary { prod: NonTerm::NP, one: NonTerm::Prps, two: NonTerm::NP }
+        Rule::Binary { prod: NonTerm::TP, one: NonTerm::NP, two: NonTerm::Tbar },
+        Rule::Binary { prod: NonTerm::Tbar, one: NonTerm::T, two: NonTerm::VP },
+        Rule::Binary { prod: NonTerm::VP, one: NonTerm::AdvP, two: NonTerm::Vbar },
+        Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::AdvP, two: NonTerm::Vbar },
+        Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::DP },
+        Rule::Binary { prod: NonTerm::DP, one: NonTerm::D, two: NonTerm::NP },
+        Rule::Binary { prod: NonTerm::Dbar, one: NonTerm::D, two: NonTerm::NP }
     ];
 
     let unit_rules = vec![
-        Rule::Unit { prod: NonTerm::Det, terminal: AN },
-        Rule::Unit { prod: NonTerm::Vbd, terminal: SHOT },
-        Rule::Unit { prod: NonTerm::NP, terminal: PAJAMAS },
-        Rule::Unit { prod: NonTerm::NP, terminal: ELEPHANT },
-        Rule::Unit { prod: NonTerm::NP, terminal: I },
-        Rule::Unit { prod: NonTerm::Prp, terminal: I },
-        Rule::Unit { prod: NonTerm::In, terminal: IN },
-        Rule::Unit { prod: NonTerm::Prps, terminal: MY }
+        Rule::Unit { prod: NonTerm::D, terminal: A },
+        Rule::Unit { prod: NonTerm::V, terminal: HIT },
+        Rule::Unit { prod: NonTerm::NP, terminal: BILL },
+        Rule::Unit { prod: NonTerm::Nbar, terminal: BILL },
+        Rule::Unit { prod: NonTerm::N, terminal: BILL },
+        Rule::Unit { prod: NonTerm::NP, terminal: CAR },
+        Rule::Unit { prod: NonTerm::Nbar, terminal: CAR },
+        Rule::Unit { prod: NonTerm::N, terminal: CAR },
+        Rule::Unit { prod: NonTerm::AdvP, terminal: SUDDENLY },
+        Rule::Unit { prod: NonTerm::Advbar, terminal: SUDDENLY },
+        Rule::Unit { prod: NonTerm::Adv, terminal: SUDDENLY },
+        Rule::Unit { prod: NonTerm::T, terminal: PAST }
     ];
 
-    let sent = [I, SHOT, AN, ELEPHANT, IN, MY, PAJAMAS];
+    let sent = [BILL, PAST, SUDDENLY, HIT, A, CAR];
 
-    let mut chart : [[Vec<Tree>; 7]; 7] = Default::default();
+    let mut chart : [[Vec<Tree>; 6]; 6] = Default::default();
 
-    let n = 7;
+    let n = 6;
 
     for i in 0..n {
         let word = sent[i];
@@ -178,7 +195,7 @@ fn main() {
     let mut i = 0;
     for parse_tree in &chart[0][n-1] {
         if let Tree::Node { root, ltree, rtree } = parse_tree {
-            if !(**root == NonTerm::S) {
+            if !(**root == NonTerm::TP) {
                 return
             }
 
@@ -193,7 +210,7 @@ fn main() {
         }
     }
 
-    /* if contains(&NonTerm::S, &chart[0][n-1]) {
+    /* if contains(&NonTerm::TP, &chart[0][n-1]) {
         println!("Sentence belongs in the grammar");
     } */
 }
