@@ -36,6 +36,9 @@ enum NonTerm {
     DP,
     Dbar,
     D,
+    PP,
+    Pbar,
+    P,
 }
 
 impl fmt::Display for NonTerm {
@@ -46,6 +49,7 @@ impl fmt::Display for NonTerm {
             Self::Vbar => write!(f, "V'"),
             Self::Advbar => write!(f, "Adv'"),
             Self::Dbar => write!(f, "D'"),
+            Self::Pbar => write!(f, "P'"),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -132,7 +136,10 @@ fn gen_unit_rules(words: Vec<(String, String)>) -> Vec<Rule> {
             },
             (tense, "T") => {
                 unit_rules.push(Rule::Unit { prod: NonTerm::T, terminal: tense.clone() });
-            }
+            },
+            (prop, "P") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::P, terminal: prop.clone() });
+            },
             _ => (),
         }
     }
@@ -160,11 +167,24 @@ fn parse_cky() -> Result<(), Box<dyn Error>> {
     let rules = vec![
         Rule::Binary { prod: NonTerm::TP, one: NonTerm::NP, two: NonTerm::Tbar },
         Rule::Binary { prod: NonTerm::Tbar, one: NonTerm::T, two: NonTerm::VP },
+        Rule::Binary { prod: NonTerm::NP, one: NonTerm::Nbar, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::Nbar, one: NonTerm::Nbar, two: NonTerm::PP },
         Rule::Binary { prod: NonTerm::VP, one: NonTerm::AdvP, two: NonTerm::Vbar },
         Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::AdvP, two: NonTerm::Vbar },
+        Rule::Binary { prod: NonTerm::VP, one: NonTerm::V, two: NonTerm::DP },
         Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::DP },
+        Rule::Binary { prod: NonTerm::VP, one: NonTerm::V, two: NonTerm::NP },
+        Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::NP },
+        Rule::Binary { prod: NonTerm::VP, one: NonTerm::Vbar, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::Vbar, two: NonTerm::PP },
         Rule::Binary { prod: NonTerm::DP, one: NonTerm::D, two: NonTerm::NP },
-        Rule::Binary { prod: NonTerm::Dbar, one: NonTerm::D, two: NonTerm::NP }
+        Rule::Binary { prod: NonTerm::Dbar, one: NonTerm::D, two: NonTerm::NP },
+        Rule::Binary { prod: NonTerm::PP, one: NonTerm::Pbar, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::Pbar, one: NonTerm::Pbar, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::PP, one: NonTerm::P, two: NonTerm::NP },
+        Rule::Binary { prod: NonTerm::Pbar, one: NonTerm::P, two: NonTerm::NP },
+        Rule::Binary { prod: NonTerm::PP, one: NonTerm::P, two: NonTerm::DP },
+        Rule::Binary { prod: NonTerm::Pbar, one: NonTerm::P, two: NonTerm::DP }
     ];
 
     let n = sent.len();
