@@ -359,11 +359,30 @@ fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
                 new_id
             },
 
+            (NonTerm::Nbar, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::N.to_string() }),
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                new_id
+            },
+
             (NonTerm::VP, 
              Tree::Node { root: NonTerm::AdvP, ltree: _, rtree: _ },
              Tree::Node { root: NonTerm::Vbar, ltree: _, rtree: _ }) => {
                 let new_id = d_tree.insert(Node::new(
                     DisplayNode { display_str: NonTerm::Vbar.to_string() }),
+                    // Question #2: why is this memory-safe? 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                new_id
+            },
+
+            (NonTerm::PP, 
+             Tree::Node { root: NonTerm::P, ltree: _, rtree: _ },
+             Tree::Node { root: _, ltree: _, rtree: _ }) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Pbar.to_string() }),
                     // Question #2: why is this memory-safe? 
                     InsertBehavior::UnderNode(&parent_id)).unwrap();
 
