@@ -165,11 +165,17 @@ fn parse_cky() -> Result<(), Box<dyn Error>> {
     let filename = "./sentence.csv";
     let words = read_sentence(filename)?;
 
-    println!("{:?}", words);
+    let tagged_words = words.clone();
+
+    // println!("{:?}", words);
 
     let new_unit_rules = gen_unit_rules(words);
-    println!("Generated unit rules");
-    println!("{:?}", new_unit_rules);
+    // println!("Generated unit rules");
+    // println!("{:?}", new_unit_rules);
+
+    let sent: Vec<&str> = (tagged_words).iter().map(
+        |(word, _)| word.as_str()).collect();
+
 
     let rules = vec![
         Rule::Binary { prod: NonTerm::TP, one: NonTerm::NP, two: NonTerm::Tbar },
@@ -196,10 +202,12 @@ fn parse_cky() -> Result<(), Box<dyn Error>> {
         Rule::Unit { prod: NonTerm::T, terminal: PAST.to_string() }
     ];
 
-    let sent = ["John", PAST, SUDDENLY, "punched", "the", "wall"];
+    // let sent = ["John", PAST, SUDDENLY, "punched", "the", "wall"];
     let n = sent.len();
 
-    let mut chart : [[Vec<Tree>; 6]; 6] = Default::default();
+    let mut chart: Vec<Vec<Vec<Tree>>> = vec![vec![vec![];n];n];
+
+    // let mut chart: [[Vec<Tree>; 6]; 6] = Default::default();
 
 
     for i in 0..n {
