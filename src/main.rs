@@ -1,9 +1,13 @@
 use core::fmt;
+use std::error::Error;
 
 use id_tree::Node;
 use id_tree::NodeId;
 use id_tree::InsertBehavior;
 use id_tree_layout::Layouter;
+
+use std::fs::File;
+use std::path::Path;
 
 const _AN: &str = "an";
 const _SHOT: &str = "shot";
@@ -65,7 +69,7 @@ impl fmt::Display for NonTerm {
 #[derive(Debug)]
 enum Rule {
     Binary {prod: NonTerm, one: NonTerm, two: NonTerm},
-    Unit {prod: NonTerm, terminal: &'static str},
+    Unit {prod: NonTerm, terminal: String },
 }
 
 #[derive(PartialEq, Clone)]
@@ -95,7 +99,78 @@ impl fmt::Debug for Tree<'_> {
     }
 }
 
+fn read_sentence<P: AsRef<Path>>(filename: P) -> Result<Vec<(String, String)>, Box<dyn Error>> {
+    let file = File::open(filename)?;
+    let mut rdr = csv::ReaderBuilder::new()
+        .has_headers(false)
+        .from_reader(Box::new(file));
+    
+    let mut words: Vec<(String, String)> = vec![];
+
+    for res in rdr.records() {
+        let record = res?;
+
+        if let (Some(s1), Some(s2)) = (record.get(0), record.get(1)) {
+            words.push((s1.to_string(), s2.to_string()));
+        } else {
+            // Fix error handling; should just throw an error here
+            println!("Improperly formed word");
+        }
+    }
+
+    Ok(words)
+}
+
+// Try rewriting this where terminals are references to the words in words vector.
+// words would need to be a reference for that
+fn gen_unit_rules(words: Vec<(String, String)>) -> Vec<Rule> {
+    
+    let mut unit_rules: Vec<Rule> = vec![];
+
+    for word in words {
+        match (word.0, (word.1).as_str()) {
+            (noun, "N") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::NP, terminal: noun.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::Nbar, terminal: noun.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::N, terminal: noun.clone() });
+            },
+            (verb, "V") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::V, terminal: verb.clone() });
+            },
+            (det, "D") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::D, terminal: det.clone() });
+            },
+            (adv, "Adv") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::AdvP, terminal: adv.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::Advbar, terminal: adv.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::Adv, terminal: adv.clone() });
+            },
+            (tense, "T") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::T, terminal: tense.clone() });
+            }
+            _ => (),
+        }
+    }
+
+    unit_rules
+}
+
 fn main() {
+    if let Err(e) = parse_cky() {
+        println!("Error while reading csv file: {:?}", e);
+    }
+}
+
+fn parse_cky() -> Result<(), Box<dyn Error>> {
+    let filename = "./sentence.csv";
+    let words = read_sentence(filename)?;
+
+    println!("{:?}", words);
+
+    let new_unit_rules = gen_unit_rules(words);
+    println!("Generated unit rules");
+    println!("{:?}", new_unit_rules);
+
     let rules = vec![
         Rule::Binary { prod: NonTerm::TP, one: NonTerm::NP, two: NonTerm::Tbar },
         Rule::Binary { prod: NonTerm::Tbar, one: NonTerm::T, two: NonTerm::VP },
@@ -107,21 +182,21 @@ fn main() {
     ];
 
     let unit_rules = vec![
-        Rule::Unit { prod: NonTerm::D, terminal: A },
-        Rule::Unit { prod: NonTerm::V, terminal: HIT },
-        Rule::Unit { prod: NonTerm::NP, terminal: BILL },
-        Rule::Unit { prod: NonTerm::Nbar, terminal: BILL },
-        Rule::Unit { prod: NonTerm::N, terminal: BILL },
-        Rule::Unit { prod: NonTerm::NP, terminal: CAR },
-        Rule::Unit { prod: NonTerm::Nbar, terminal: CAR },
-        Rule::Unit { prod: NonTerm::N, terminal: CAR },
-        Rule::Unit { prod: NonTerm::AdvP, terminal: SUDDENLY },
-        Rule::Unit { prod: NonTerm::Advbar, terminal: SUDDENLY },
-        Rule::Unit { prod: NonTerm::Adv, terminal: SUDDENLY },
-        Rule::Unit { prod: NonTerm::T, terminal: PAST }
+        Rule::Unit { prod: NonTerm::D, terminal: A.to_string() },
+        Rule::Unit { prod: NonTerm::V, terminal: HIT.to_string() },
+        Rule::Unit { prod: NonTerm::NP, terminal: BILL.to_string() },
+        Rule::Unit { prod: NonTerm::Nbar, terminal: BILL.to_string() },
+        Rule::Unit { prod: NonTerm::N, terminal: BILL.to_string() },
+        Rule::Unit { prod: NonTerm::NP, terminal: CAR.to_string() },
+        Rule::Unit { prod: NonTerm::Nbar, terminal: CAR.to_string() },
+        Rule::Unit { prod: NonTerm::N, terminal: CAR.to_string() },
+        Rule::Unit { prod: NonTerm::AdvP, terminal: SUDDENLY.to_string() },
+        Rule::Unit { prod: NonTerm::Advbar, terminal: SUDDENLY.to_string() },
+        Rule::Unit { prod: NonTerm::Adv, terminal: SUDDENLY.to_string() },
+        Rule::Unit { prod: NonTerm::T, terminal: PAST.to_string() }
     ];
 
-    let sent = [BILL, PAST, SUDDENLY, HIT, A, CAR];
+    let sent = ["John", PAST, SUDDENLY, "punched", "the", "wall"];
     let n = sent.len();
 
     let mut chart : [[Vec<Tree>; 6]; 6] = Default::default();
@@ -130,12 +205,12 @@ fn main() {
     for i in 0..n {
         let word = sent[i];
 
-        for rule in &unit_rules {
+        for rule in &new_unit_rules {
             if let Rule::Unit { prod, terminal } = rule {
-                if &word == terminal {
+                if word == terminal {
                     let tree = Tree::Node {
                                 root: prod,
-                                ltree: Box::new(Tree::Leaf(*terminal)),
+                                ltree: Box::new(Tree::Leaf(terminal)),
                                 rtree: Box::new(Tree::Empty)};
                     // hello("Found word for prod {:?}: {}", prod, word);
                     chart[i][i].push(tree);
@@ -206,7 +281,7 @@ fn main() {
     for parse_tree in &chart[0][n-1] {
         if let Tree::Node { root, ltree: _, rtree: _ } = parse_tree {
             if !(**root == NonTerm::TP) {
-                return
+                return Ok(())
             }
 
             if let Some(display_tree) = build_display_tree(parse_tree) {
@@ -219,6 +294,8 @@ fn main() {
             }    
         }
     }
+
+    Ok(())
 }
 
 fn _get_matches<'a>(target: &NonTerm, nterms: &'a Vec<&NonTerm>) -> Vec<&'a NonTerm> {
@@ -322,7 +399,17 @@ fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
                     InsertBehavior::UnderNode(&new_id)).unwrap();
 
                 new_id
-            }
+            },
+
+            (NonTerm::DP,
+             Tree::Node { root: NonTerm::D, ltree: _, rtree: _ },
+             Tree::Node { root: NonTerm::NP, ltree: _, rtree: _ }) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Dbar.to_string() }),
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                new_id
+            },
             
             (_, _, _) => parent_id,
         }
