@@ -1,4 +1,5 @@
 use core::fmt;
+use std::env;
 use std::error::Error;
 
 use id_tree::Node;
@@ -148,14 +149,20 @@ fn gen_unit_rules(words: Vec<(String, String)>) -> Vec<Rule> {
 }
 
 fn main() {
-    if let Err(e) = parse_cky() {
-        println!("Error while reading csv file: {:?}", e);
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Usage: {} <file_path>", &args[0]);
+        return;
+    }
+
+    let file_path = &args[1];
+
+    if let Err(e) = parse_cky(file_path) {
+        println!("Error parsing sentence in .csv file: {:?}", e);
     }
 }
 
-fn parse_cky() -> Result<(), Box<dyn Error>> {
-    let filename = "./sentence.csv";
-    
+fn parse_cky(filename: &str) -> Result<(), Box<dyn Error>> {
     let words = read_sentence(filename)?;
     let tagged_words = words.clone();
 
