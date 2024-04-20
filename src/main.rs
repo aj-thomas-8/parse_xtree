@@ -9,21 +9,6 @@ use id_tree_layout::Layouter;
 use std::fs::File;
 use std::path::Path;
 
-const _AN: &str = "an";
-const _SHOT: &str = "shot";
-const _PAJAMAS: &str = "pajamas";
-const _ELEPHANT: &str = "elephant";
-const _I: &str = "I";
-const _IN: &str = "in";
-const _MY: &str = "my";
-
-const BILL: &str = "Bill";
-const PAST: &str = "[PAST]";
-const SUDDENLY: &str = "suddenly";
-const HIT: &str = "hit";
-const A: &str = "a";
-const CAR: &str = "car";
-
 struct DisplayNode {
     display_str: String,
 }
@@ -163,19 +148,14 @@ fn main() {
 
 fn parse_cky() -> Result<(), Box<dyn Error>> {
     let filename = "./sentence.csv";
+    
     let words = read_sentence(filename)?;
-
     let tagged_words = words.clone();
-
-    // println!("{:?}", words);
-
-    let new_unit_rules = gen_unit_rules(words);
-    // println!("Generated unit rules");
-    // println!("{:?}", new_unit_rules);
 
     let sent: Vec<&str> = (tagged_words).iter().map(
         |(word, _)| word.as_str()).collect();
 
+    let new_unit_rules = gen_unit_rules(words);
 
     let rules = vec![
         Rule::Binary { prod: NonTerm::TP, one: NonTerm::NP, two: NonTerm::Tbar },
@@ -187,28 +167,8 @@ fn parse_cky() -> Result<(), Box<dyn Error>> {
         Rule::Binary { prod: NonTerm::Dbar, one: NonTerm::D, two: NonTerm::NP }
     ];
 
-    let unit_rules = vec![
-        Rule::Unit { prod: NonTerm::D, terminal: A.to_string() },
-        Rule::Unit { prod: NonTerm::V, terminal: HIT.to_string() },
-        Rule::Unit { prod: NonTerm::NP, terminal: BILL.to_string() },
-        Rule::Unit { prod: NonTerm::Nbar, terminal: BILL.to_string() },
-        Rule::Unit { prod: NonTerm::N, terminal: BILL.to_string() },
-        Rule::Unit { prod: NonTerm::NP, terminal: CAR.to_string() },
-        Rule::Unit { prod: NonTerm::Nbar, terminal: CAR.to_string() },
-        Rule::Unit { prod: NonTerm::N, terminal: CAR.to_string() },
-        Rule::Unit { prod: NonTerm::AdvP, terminal: SUDDENLY.to_string() },
-        Rule::Unit { prod: NonTerm::Advbar, terminal: SUDDENLY.to_string() },
-        Rule::Unit { prod: NonTerm::Adv, terminal: SUDDENLY.to_string() },
-        Rule::Unit { prod: NonTerm::T, terminal: PAST.to_string() }
-    ];
-
-    // let sent = ["John", PAST, SUDDENLY, "punched", "the", "wall"];
     let n = sent.len();
-
     let mut chart: Vec<Vec<Vec<Tree>>> = vec![vec![vec![];n];n];
-
-    // let mut chart: [[Vec<Tree>; 6]; 6] = Default::default();
-
 
     for i in 0..n {
         let word = sent[i];
@@ -220,9 +180,7 @@ fn parse_cky() -> Result<(), Box<dyn Error>> {
                                 root: prod,
                                 ltree: Box::new(Tree::Leaf(terminal)),
                                 rtree: Box::new(Tree::Empty)};
-                    // hello("Found word for prod {:?}: {}", prod, word);
                     chart[i][i].push(tree);
-                        
                 }
             }
         }
@@ -231,13 +189,8 @@ fn parse_cky() -> Result<(), Box<dyn Error>> {
     for l in 2..=n {
         for i in 0..=(n - l) {
             let j = i + l - 1;
-            // print!("({:?}, {:?}) ", i, j);
 
             for p in 1..=(l-1) {
-                // chart[i][j-p] - left; chart[i+(l-p)][j] - down
-                // print!("{:?} + {:?} ", chart[i][j-p], chart[i+p][j]);
-
-
                 if chart[i][j-p].is_empty() || chart[i+(l-p)][j].is_empty() {
                     continue;
                 }
