@@ -273,7 +273,7 @@ fn parse_cky(filename: &str) -> Result<(), Box<dyn Error>> {
             }
 
             if let Some(display_tree) = build_display_tree(parse_tree) {
-                let path = format!("./parse_tree-{:?}.svg", i);
+                let path = format!("static/parse_tree-{:?}.svg", i);
                 let layouter = Layouter::new(&display_tree)
                     .with_file_path(std::path::Path::new(path.as_str()));
                 layouter.write().expect("Failed creating parse tree image");
