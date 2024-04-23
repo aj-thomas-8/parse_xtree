@@ -20,7 +20,7 @@ impl id_tree_layout::Visualize for DisplayNode {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 enum NonTerm {
     TP,
     Tbar,
