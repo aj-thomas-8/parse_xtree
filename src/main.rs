@@ -172,6 +172,7 @@ fn parse_cky(filename: &str) -> Result<(), Box<dyn Error>> {
     let new_unit_rules = gen_unit_rules(words);
 
     let rules = vec![
+        Rule::Binary { prod: NonTerm::TP, one: NonTerm::DP, two: NonTerm::Tbar },
         Rule::Binary { prod: NonTerm::TP, one: NonTerm::NP, two: NonTerm::Tbar },
         Rule::Binary { prod: NonTerm::Tbar, one: NonTerm::T, two: NonTerm::VP },
         Rule::Binary { prod: NonTerm::NP, one: NonTerm::Nbar, two: NonTerm::PP },
@@ -184,6 +185,8 @@ fn parse_cky(filename: &str) -> Result<(), Box<dyn Error>> {
         Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::VP, one: NonTerm::Vbar, two: NonTerm::PP },
         Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::Vbar, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::VP, one: NonTerm::V, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::PP },
         Rule::Binary { prod: NonTerm::DP, one: NonTerm::D, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::Dbar, one: NonTerm::D, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::PP, one: NonTerm::Pbar, two: NonTerm::PP },
@@ -375,8 +378,8 @@ fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
             },
 
             (NonTerm::VP, 
-             Tree::Node { root: NonTerm::AdvP, ltree: _, rtree: _ },
-             Tree::Node { root: NonTerm::Vbar, ltree: _, rtree: _ }) => {
+             Tree::Node { root: _, ltree: _, rtree: _ },
+             Tree::Node { root: _, ltree: _, rtree: _ }) => {
                 let new_id = d_tree.insert(Node::new(
                     DisplayNode { display_str: NonTerm::Vbar.to_string() }),
                     // Question #2: why is this memory-safe? 
