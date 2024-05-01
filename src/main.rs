@@ -40,6 +40,9 @@ enum NonTerm {
     PP,
     Pbar,
     P,
+    AdjP,
+    Adjbar,
+    Adj,
 }
 
 impl fmt::Display for NonTerm {
@@ -51,6 +54,7 @@ impl fmt::Display for NonTerm {
             Self::Advbar => write!(f, "Adv'"),
             Self::Dbar => write!(f, "D'"),
             Self::Pbar => write!(f, "P'"),
+            Self::Adjbar => write!(f, "Adj'"),
             _ => write!(f, "{:?}", self),
         }
     }
@@ -125,6 +129,8 @@ fn gen_unit_rules(words: Vec<(String, String)>) -> Vec<Rule> {
                 unit_rules.push(Rule::Unit { prod: NonTerm::N, terminal: noun.clone() });
             },
             (verb, "V") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::VP, terminal: verb.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::Vbar, terminal: verb.clone() });
                 unit_rules.push(Rule::Unit { prod: NonTerm::V, terminal: verb.clone() });
             },
             (det, "D") => {
@@ -140,6 +146,11 @@ fn gen_unit_rules(words: Vec<(String, String)>) -> Vec<Rule> {
             },
             (prop, "P") => {
                 unit_rules.push(Rule::Unit { prod: NonTerm::P, terminal: prop.clone() });
+            },
+            (adj, "Adj") => {
+                unit_rules.push(Rule::Unit { prod: NonTerm::AdjP, terminal: adj.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::Adjbar, terminal: adj.clone() });
+                unit_rules.push(Rule::Unit { prod: NonTerm::Adj, terminal: adj.clone() });
             },
             _ => (),
         }
@@ -185,8 +196,6 @@ fn parse_cky(filename: &str) -> Result<(), Box<dyn Error>> {
         Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::VP, one: NonTerm::Vbar, two: NonTerm::PP },
         Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::Vbar, two: NonTerm::PP },
-        Rule::Binary { prod: NonTerm::VP, one: NonTerm::V, two: NonTerm::PP },
-        Rule::Binary { prod: NonTerm::Vbar, one: NonTerm::V, two: NonTerm::PP },
         Rule::Binary { prod: NonTerm::DP, one: NonTerm::D, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::Dbar, one: NonTerm::D, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::PP, one: NonTerm::Pbar, two: NonTerm::PP },
@@ -194,7 +203,13 @@ fn parse_cky(filename: &str) -> Result<(), Box<dyn Error>> {
         Rule::Binary { prod: NonTerm::PP, one: NonTerm::P, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::Pbar, one: NonTerm::P, two: NonTerm::NP },
         Rule::Binary { prod: NonTerm::PP, one: NonTerm::P, two: NonTerm::DP },
-        Rule::Binary { prod: NonTerm::Pbar, one: NonTerm::P, two: NonTerm::DP }
+        Rule::Binary { prod: NonTerm::Pbar, one: NonTerm::P, two: NonTerm::DP },
+        Rule::Binary { prod: NonTerm::NP, one: NonTerm::AdjP, two: NonTerm::Nbar },
+        Rule::Binary { prod: NonTerm::Nbar, one: NonTerm::AdjP, two: NonTerm::Nbar },
+        Rule::Binary { prod: NonTerm::AdjP, one: NonTerm::AdjP, two: NonTerm::Adjbar },
+        Rule::Binary { prod: NonTerm::Adjbar, one: NonTerm::AdjP, two: NonTerm::Adjbar },
+        Rule::Binary { prod: NonTerm::AdjP, one: NonTerm::Adj, two: NonTerm::PP },
+        Rule::Binary { prod: NonTerm::Adjbar, one: NonTerm::Adj, two: NonTerm::PP }
     ];
 
     let n = sent.len();
@@ -355,11 +370,11 @@ fn gen_display(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
 fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
     parent_id: NodeId) -> NodeId {
     if let Tree::Node { root, ltree, rtree } = tree {
+        // Get rid of the cloning here
         match (*root, (**ltree).clone(), (**rtree).clone()) {
             (NonTerm::NP, Tree::Leaf(_), Tree::Empty) => {
                 let new_id = d_tree.insert(Node::new(
                     DisplayNode { display_str: NonTerm::Nbar.to_string() }),
-                    // Question #2: why is this memory-safe? 
                     InsertBehavior::UnderNode(&parent_id)).unwrap();
 
                 let new_id = d_tree.insert(Node::new(
@@ -377,14 +392,33 @@ fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
                 new_id
             },
 
-            (NonTerm::VP, 
+            (NonTerm::NP, 
              Tree::Node { root: _, ltree: _, rtree: _ },
              Tree::Node { root: _, ltree: _, rtree: _ }) => {
                 let new_id = d_tree.insert(Node::new(
-                    DisplayNode { display_str: NonTerm::Vbar.to_string() }),
-                    // Question #2: why is this memory-safe? 
+                    DisplayNode { display_str: NonTerm::Nbar.to_string() }),
                     InsertBehavior::UnderNode(&parent_id)).unwrap();
 
+                new_id
+            },
+
+            (NonTerm::VP, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Vbar.to_string() }), 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::V.to_string() }), 
+                    InsertBehavior::UnderNode(&new_id)).unwrap();
+
+                new_id
+            },
+
+            (NonTerm::Vbar, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::V.to_string() }), 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+                
                 new_id
             },
 
@@ -416,6 +450,46 @@ fn extend(d_tree: &mut id_tree::Tree<DisplayNode>, tree: &Tree,
              Tree::Node { root: NonTerm::NP, ltree: _, rtree: _ }) => {
                 let new_id = d_tree.insert(Node::new(
                     DisplayNode { display_str: NonTerm::Dbar.to_string() }),
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                new_id
+            },
+
+            (NonTerm::AdjP, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Adjbar.to_string() }), 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+               let new_id = d_tree.insert(Node::new(
+                DisplayNode { display_str: NonTerm::Adj.to_string() }), 
+                InsertBehavior::UnderNode(&new_id)).unwrap(); 
+                
+                new_id
+            },
+
+            (NonTerm::Adjbar, Tree::Leaf(_), Tree::Empty) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Adj.to_string() }), 
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+                
+                new_id
+            },
+
+            (NonTerm::AdjP, 
+             Tree::Node { root: NonTerm::AdjP, ltree: _, rtree: _ },
+             Tree::Node { root: _, ltree: _, rtree: _ }) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Adjbar.to_string() }),
+                    InsertBehavior::UnderNode(&parent_id)).unwrap();
+
+                new_id
+            },
+
+            (NonTerm::AdjP, 
+             Tree::Node { root: NonTerm::Adj, ltree: _, rtree: _ },
+             Tree::Node { root: _, ltree: _, rtree: _ }) => {
+                let new_id = d_tree.insert(Node::new(
+                    DisplayNode { display_str: NonTerm::Adjbar.to_string() }),
                     InsertBehavior::UnderNode(&parent_id)).unwrap();
 
                 new_id
