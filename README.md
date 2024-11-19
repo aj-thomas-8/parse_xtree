@@ -1,7 +1,7 @@
 # parse_xtree
 An Xbar tree parser implemented using the CKY parsing algorithm.  
 
-Parser used in the xbtree project: https://github.umn.edu/thom5458/xbtree
+Parser used in the xbtree project: https://github.com/aj-thomas-8/xbtree
 
 ## Requirements
 __Rust__ 
